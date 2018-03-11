@@ -73,23 +73,20 @@ class KriisisBot(telegram.Bot):
             users = session.query(User).filter(User.subscribed_categories.contains(discount.category))
             users.filter(User.subscribed_shops.any(Shop.shop_id.in_(shop_ids)))
             for user in users.all():
-                print("NOTIFYING USER ", user.chat_id)
                 self.notify_user(user, discount)
                 time.sleep(1)
         self.logger.info("Processing complete")
 
     def notify_user(self, user, discount):  # TODO: Implement notifying the user
+        self.logger.debug("NOTIFYING USER ", user.user_id)
         if user.picture_notifications:
-            print("YEH")
             if discount.image_file_id is not None:
                 self.send_photo(user.chat_id, discount.image_file_id)
             else:
                 message = self.send_photo(user.chat_id, discount.image_url)
                 discount.image_file_id = message.photo[0].file_id
                 inspect(discount).session.commit()
-        print("NAH")
         self.send_message(user.chat_id, discount.notification_str)
-        print("Done")
 
     def scrape(self, job):
         new_discounts = self.scraper.scrape_discounts()
