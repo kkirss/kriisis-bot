@@ -38,7 +38,8 @@ class Category(Nameable, Base):
                            secondaryjoin="Category.category_id==CategoryAssociation.parent_id")
     subscribed_users = relationship("User", back_populates="subscribed_categories", secondary="category_subscriptions")
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(**kwargs)
         self._ancestors = None
 
     @orm.reconstructor

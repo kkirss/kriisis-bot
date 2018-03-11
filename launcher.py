@@ -9,10 +9,10 @@ from kriisis.models import Base, Category, Shop, User, Discount
 
 
 def launch():  # TODO: Recheck discount expiring
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("Launcher")
     logger.info("Initializing...")
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("bs4").setLevel(logging.ERROR)
     engine = sqlalchemy.create_engine("sqlite:///db.sqlite3")

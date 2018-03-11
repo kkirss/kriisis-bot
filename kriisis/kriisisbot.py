@@ -49,9 +49,8 @@ class KriisisBot(telegram.Bot):
 
     def start_bot(self):
         now = datetime.datetime.now()
-        next_hour = 3600 - (now - now.replace(minute=0, second=0)).total_seconds() + 1
-        self.updater.job_queue.put(self.hourly_notify_job, next_hour)
-        self.updater.job_queue.put(self.scrape_job, 5000)
+        self.updater.job_queue.run_repeating(self.__class__.hourly_notify, name="Hourly notify Job", interval=3600, first=0)
+        self.updater.job_queue.run_repeating(self.__class__.scrape, name="Scrape Job", interval=600, first=0)
         self.updater.start_polling(poll_interval=self.POLL_INTERVAL)
     
     def send_message(self, chat_id, text, *args, **kwargs):

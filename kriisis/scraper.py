@@ -76,7 +76,7 @@ class Scraper:
         self.logger.info("Starting discount scraping...")
         start_time = time.time()
         new_discounts = []
-        for category in Category.end_categories[:1]:
+        for category in Category.end_categories:
             self.logger.debug("Scraping category {}: {}".format(category.category_id, category.name))
             found_discounts = self.scrape_category(category.category_id, session)
             new_discounts.extend(found_discounts)
