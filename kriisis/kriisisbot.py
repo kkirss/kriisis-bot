@@ -5,6 +5,7 @@ import time
 import telegram
 from sqlalchemy import exists
 from sqlalchemy import inspect
+from telegram import ParseMode
 from telegram.ext import Job
 from telegram.ext import Updater, CommandHandler
 
@@ -78,7 +79,6 @@ class KriisisBot(telegram.Bot):
         self.logger.info("Processing complete")
 
     def notify_user(self, user, discount):  # TODO: Implement notifying the user
-        self.logger.debug("NOTIFYING USER ", user.user_id)
         if user.picture_notifications:
             if discount.image_file_id is not None:
                 self.send_photo(user.chat_id, discount.image_file_id)
@@ -86,7 +86,7 @@ class KriisisBot(telegram.Bot):
                 message = self.send_photo(user.chat_id, discount.image_url)
                 discount.image_file_id = message.photo[0].file_id
                 inspect(discount).session.commit()
-        self.send_message(user.chat_id, discount.notification_str)
+        self.send_message(user.chat_id, discount.notification_str, parse_mode=ParseMode.MARKDOWN)
 
     def scrape(self, job):
         new_discounts = self.scraper.scrape_discounts()

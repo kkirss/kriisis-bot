@@ -83,7 +83,7 @@ class CategorySubscription(Base):
 
 class Discount(Base):
     __tablename__ = "discounts"
-    NOTIFICATION_FORMAT = """*{d.item_name}*\n_{d.item_description}_\n{d.price}\n{d.shop_names}\n{d.end_date:%d.%m.%y}"""
+    NOTIFICATION_FORMAT = """*{d.item_name}*\n_{d.item_description}_\n{d.price}€\n{d.shop_names}\n{d.end_date:%d.%m.%y}"""
     NOTIFICATION_FORMAT_NO_DESCRIPTION = """*{d.item_name}*\n{d.price}\n{d.shop_names}\n{d.end_date:%d.%m.%y}"""
 
     discount_id = Column(Integer, primary_key=True)
