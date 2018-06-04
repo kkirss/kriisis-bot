@@ -145,6 +145,7 @@ class User(Base):
     chat_id = Column(Integer, nullable=False)
     picture_notifications = Column(Boolean, default=DEFAULT_PICTURE_NOTIFICATIONS, nullable=False)
     notification_time = Column(Integer, default=DEFAULT_NOTIFY_TIME, nullable=False)
+    last_discount_id = Column(Integer, default=0, nullable=False)
 
     subscribed_categories = relationship("Category", back_populates="subscribed_users",
                                          secondary="category_subscriptions")

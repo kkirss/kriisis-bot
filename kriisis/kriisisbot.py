@@ -9,7 +9,7 @@ from telegram import ParseMode
 from telegram.ext import Job
 from telegram.ext import Updater, CommandHandler
 
-from .models import Category, Shop, User
+from .models import Category, Shop, User, Discount
 
 
 class KriisisBot(telegram.Bot):
@@ -31,8 +31,6 @@ class KriisisBot(telegram.Bot):
         self.scraper = scraper
         self.updater = Updater(bot=self)
         self.add_handlers()
-        self.scrape_job = Job(self.__class__.scrape, self.SCRAPE_INTERVAL)
-        self.hourly_notify_job = Job(self.__class__.hourly_notify, 3600)
 
     def add_handlers(self):
         dispatcher = self.updater.dispatcher
@@ -50,7 +48,8 @@ class KriisisBot(telegram.Bot):
 
     def start_bot(self):
         now = datetime.datetime.now()
-        self.updater.job_queue.run_repeating(self.__class__.hourly_notify, name="Hourly notify Job", interval=3600, first=0)
+        next_hour = 3600 - (now - now.replace(minute=0, second=0)).total_seconds() + 1
+        self.updater.job_queue.run_repeating(self.__class__.hourly_notify, name="Hourly notify Job", interval=3600, first=next_hour)
         self.updater.job_queue.run_repeating(self.__class__.scrape, name="Scrape Job", interval=600, first=0)
         self.updater.start_polling(poll_interval=self.POLL_INTERVAL)
     
@@ -64,18 +63,21 @@ class KriisisBot(telegram.Bot):
                 user = session.query(User).filter_by(chat_id=chat_id).first()
                 session.delete(user)
                 session.commit()
-    
-    def process_new_discounts(self, new_discounts):
-        self.logger.info("Processing new discounts...")
-        # TODO: Implement processing new discounts
+
+    def send_notifications(self, hourly=False):
         session = self.session_factory()
-        for discount in new_discounts:
-            shop_ids = [shop.shop_id for shop in discount.shops]
-            users = session.query(User).filter(User.subscribed_categories.contains(discount.category))
-            users.filter(User.subscribed_shops.any(Shop.shop_id.in_(shop_ids)))
-            for user in users.all():
+        for user in session.query(User).all():
+            subscribed_category_ids = [category.category_id for category in user.subscribed_categories]
+            subscribed_shop_ids = [shop.shop_id for shop in user.subscribed_shops]
+            discounts = session.query(Discount)
+            discounts.filter(Discount.discount_id > user.last_discount_id)
+            discounts.filter(Discount.category_id.in_(subscribed_category_ids))
+            discounts.filter(Discount.shops.any(Shop.shop_id.in_(subscribed_shop_ids)))
+            for discount in discounts.all():
                 self.notify_user(user, discount)
-                time.sleep(1)
+                if discount.discount_id > user.last_discount_id:
+                    user.last_discount_id = discount.discount_id
+        session.commit()
         self.logger.info("Processing complete")
 
     def notify_user(self, user, discount):  # TODO: Implement notifying the user
@@ -91,10 +93,11 @@ class KriisisBot(telegram.Bot):
     def scrape(self, job):
         new_discounts = self.scraper.scrape_discounts()
         if len(new_discounts) > 0:
-            self.process_new_discounts(new_discounts)
+            self.send_notifications()
 
-    def hourly_notify(self, job):  # TODO: Implement hourly notifications
+    def hourly_notify(self, job):
         cur_hour = datetime.datetime.now().hour
+        self.send_notifications(hourly=True)
         self.logger.info("Hourly ({}) check for discounts to notify...".format(cur_hour))
 
     def get_user(self, update, session):

@@ -36,7 +36,7 @@ def launch():  # TODO: Recheck discount expiring
     kriisis_bot.start_bot()
     logging.info("Telegram bot started")
     session = session_factory()
-    all_discounts = session.query(Discount)
+    all_discounts = session.query(Discount).all()
     kriisis_bot.process_new_discounts(all_discounts)
     # with open("discounts.txt", "w", encoding="utf-8") as f:
     #     f.write("\n".join("{d.price}€ {d.start_date:%d.%m.%y}-{d.end_date:%d.%m.%y} {d.item_name} ({d.shop_names})".format(d=discount) for discount in all_discounts))
