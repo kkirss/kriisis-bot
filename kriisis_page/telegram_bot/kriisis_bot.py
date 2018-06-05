@@ -6,10 +6,10 @@ import telegram
 from sqlalchemy import exists
 from sqlalchemy import inspect
 from telegram import ParseMode
-from telegram.ext import Job
 from telegram.ext import Updater, CommandHandler
 
-from .models import Category, Shop, User, Discount
+from scraper.models import Category, Shop, Discount
+from accounts.models import User
 
 
 class KriisisBot(telegram.Bot):
@@ -22,12 +22,11 @@ class KriisisBot(telegram.Bot):
     # TODO: Implement kampaaniad
     # TODO: Implement sending pictures
 
-    def __init__(self, session_factory, scraper):
+    def __init__(self, scraper):
         with open(self.AUTH_TOKEN_LOCATION) as f:
             token = f.readline().strip()
         super().__init__(token)
         self.logger = logging.getLogger(__name__)
-        self.session_factory = session_factory
         self.scraper = scraper
         self.updater = Updater(bot=self)
         self.add_handlers()
@@ -81,7 +80,7 @@ class KriisisBot(telegram.Bot):
         self.logger.info("Processing complete")
 
     def notify_user(self, user, discount):  # TODO: Implement notifying the user
-        if user.picture_notifications:
+        if user.telegram_picture_notifications:
             if discount.image_file_id is not None:
                 self.send_photo(user.chat_id, discount.image_file_id)
             else:
