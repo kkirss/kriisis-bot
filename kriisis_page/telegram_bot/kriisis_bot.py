@@ -1,31 +1,26 @@
 import datetime
 import logging
-import time
 
 import telegram
-from sqlalchemy import exists
-from sqlalchemy import inspect
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from telegram import ParseMode
 from telegram.ext import Updater, CommandHandler
 
 from scraper.models import Category, Shop, Discount
-from accounts.models import User
+from accounts.models import Profile
 
 
 class KriisisBot(telegram.Bot):
     GITHUB_LINK = ""  # TODO: Upload to github
-    AUTH_TOKEN_LOCATION = "Telegram Auth Token.txt"  # TODO: Perhaps a more elegant solution down the line
     POLL_INTERVAL = 2
     SCRAPE_INTERVAL = 3600
 
     # TODO: Implement getting notifications at specific hours
     # TODO: Implement kampaaniad
-    # TODO: Implement sending pictures
 
     def __init__(self, scraper):
-        with open(self.AUTH_TOKEN_LOCATION) as f:
-            token = f.readline().strip()
-        super().__init__(token)
+        super().__init__(settings.TELEGRAM_AUTH_TOKEN)
         self.logger = logging.getLogger(__name__)
         self.scraper = scraper
         self.updater = Updater(bot=self)
@@ -58,36 +53,37 @@ class KriisisBot(telegram.Bot):
         except telegram.error.BadRequest as e:
             if "chat not found" in e.message:
                 self.logger.info("Chat not found for chat_id", chat_id, "Deleting the user")
-                session = self.session_factory()
-                user = session.query(User).filter_by(chat_id=chat_id).first()
-                session.delete(user)
-                session.commit()
+                try:
+                    profile = Profile.objects.get(telegram_chat_id=chat_id)
+                except ObjectDoesNotExist:
+                    pass
+                else:
+                    profile.delete()
 
     def send_notifications(self, hourly=False):
-        session = self.session_factory()
-        for user in session.query(User).all():
-            subscribed_category_ids = [category.category_id for category in user.subscribed_categories]
-            subscribed_shop_ids = [shop.shop_id for shop in user.subscribed_shops]
-            discounts = session.query(Discount)
-            discounts.filter(Discount.discount_id > user.last_discount_id)
-            discounts.filter(Discount.category_id.in_(subscribed_category_ids))
-            discounts.filter(Discount.shops.any(Shop.shop_id.in_(subscribed_shop_ids)))
+        for profile in Profile.objects.all():
+            subscribed_category_ids = [category.kriisis_id for category in profile.subscribed_categories]
+            subscribed_shop_ids = [shop.kriisis_id for shop in profile.subscribed_shops]
+            discounts = Discount.objects\
+                .filter(kriisis_id__lt=profile.kriisis_last_discount_id)\
+                .filter(category__in=profile.subscribed_categories)\
+                .filter(shops__in=profile.subscribed_shops)
             for discount in discounts.all():
-                self.notify_user(user, discount)
-                if discount.discount_id > user.last_discount_id:
-                    user.last_discount_id = discount.discount_id
-        session.commit()
+                self.notify_user(profile, discount)
+                if discount.discount_id > profile.kriisis_last_discount_id:
+                    profile.kriisis_last_discount_id = discount.discount_id
+                    profile.save()
         self.logger.info("Processing complete")
 
-    def notify_user(self, user, discount):  # TODO: Implement notifying the user
-        if user.telegram_picture_notifications:
+    def notify_user(self, profile, discount):  # TODO: Implement notifying the user
+        if profile.telegram_picture_notifications:
             if discount.image_file_id is not None:
-                self.send_photo(user.chat_id, discount.image_file_id)
+                self.send_photo(profile.chat_id, discount.image_file_id)
             else:
-                message = self.send_photo(user.chat_id, discount.image_url)
+                message = self.send_photo(profile.chat_id, discount.image_url)
                 discount.image_file_id = message.photo[0].file_id
-                inspect(discount).session.commit()
-        self.send_message(user.chat_id, discount.notification_str, parse_mode=ParseMode.MARKDOWN)
+                discount.save()
+        self.send_message(profile.chat_id, discount.notification_str, parse_mode=ParseMode.MARKDOWN)
 
     def scrape(self, job):
         new_discounts = self.scraper.scrape_discounts()
@@ -99,13 +95,14 @@ class KriisisBot(telegram.Bot):
         self.send_notifications(hourly=True)
         self.logger.info("Hourly ({}) check for discounts to notify...".format(cur_hour))
 
-    def get_user(self, update, session):
-        user = session.query(User).get(update.message.from_user.id)
-        if user is None:
+    def get_profile(self, update):
+        try:
+            profile = Profile.objects.get(telegran_user_id=update.message.from_user.id)
+        except ObjectDoesNotExist:
             self.send_message(update.message.chat_id, "Please use /start first.")
             raise RuntimeError("User hadn't used /start")
         else:
-            return user
+            return profile
 
     def help_command(self, update, args=()):
         # TODO: Implement general help
@@ -115,50 +112,50 @@ class KriisisBot(telegram.Bot):
 
     def start_command(self, update):
         user_id, chat_id = update.message.from_user.id, update.message.chat_id
-        session = self.session_factory()
-        if session.query(exists().where(User.user_id == user_id)).scalar():
-            self.send_message(chat_id, "You have already used /start. Use /help if you want help.")
-        else:
-            session.add(User(user_id=user_id, chat_id=chat_id))
-            session.commit()
+        try:
+            profile = Profile.objects.get(telegram_user_id=user_id)
+        except ObjectDoesNotExist:
+            profile = Profile(telegram_user_id=user_id, telegram_chat_id=chat_id)
+            profile.save()
             self.send_message(chat_id, "Hello :)")
             self.help_command(update)
+        else:
+            self.send_message(chat_id, "You have already used /start. Use /help if you want help.")
 
     def add_command(self, update, args, type_=None, remove=False):
         found_objects = []
-        session = self.session_factory()
-        user = self.get_user(update, session)
+        profile = self.get_profile(update)
         search_query = " ".join(args)
         try:
             obj_id = int(search_query)
         except ValueError:
             if type_ is Shop or type_ is None:
-                found_objects.extend(Shop.search(search_query, session))
+                found_objects.extend(list(Shop.objects.filter(name__icontains=search_query).all()))
             if type_ is Category or type_ is None:
-                found_objects.extend(Category.search(search_query, session))
+                found_objects.extend(list(Category.objects.filter(name__icontains=search_query).all()))
             if not found_objects:
-                self.send_message(user.chat_id, "Found nothing with that name.")
+                self.send_message(profile.chat_id, "Found nothing with that name.")
                 return
         else:
             if type_ is Shop or type_ is None:
-                found_objects.extend(session.query(Shop).filter(Shop.shop_id == obj_id).limit(1).all())
+                found_objects.extend(list(Shop.objects.filter(kriisis_id=obj_id).all()))
             if type_ is Category or type_ is None:
-                found_objects.extend(session.query(Category).filter(Category.category_id == obj_id).limit(1).all())
+                found_objects.extend(list(Category.objects.filter(kriisis_id=obj_id).all()))
             if not found_objects:
-                self.send_message(user.chat_id, "Found nothing with that id.")
+                self.send_message(profile.chat_id, "Found nothing with that id.")
                 return
         applicable_objects = []
         for found_object in found_objects:
             if type(found_object) is Shop:
                 if remove:
-                    applicable = found_object in user.subscribed_shops
+                    applicable = found_object in profile.subscribed_shops
                 else:
-                    applicable = found_object not in user.subscribed_shops
+                    applicable = found_object not in profile.subscribed_shops
             elif type(found_object) is Category:
                 if remove:
-                    applicable = found_object in user.subscribed_categories
+                    applicable = found_object in profile.subscribed_categories
                 else:
-                    applicable = all(category not in user.subscribed_categories for category in
+                    applicable = all(category not in profile.subscribed_categories for category in
                                      [found_object] + list(found_object.ancestors))
             else:
                 raise NotImplementedError("Unknown object found in add_command")
@@ -167,32 +164,38 @@ class KriisisBot(telegram.Bot):
         if len(applicable_objects) == 0:
             if remove:
                 if len(found_objects) == 1:
-                    self.send_message(user.chat_id, "You aren't subscribed to it.")
+                    self.send_message(profile.chat_id, "You aren't subscribed to it.")
                 else:
-                    self.send_message(user.chat_id, "You aren't subscribed to them.")
+                    self.send_message(profile.chat_id, "You aren't subscribed to them.")
             else:
                 if len(found_objects) == 1:
-                    self.send_message(user.chat_id, "You already are subscribed to it.")
+                    self.send_message(profile.chat_id, "You already are subscribed to it.")
                 else:
-                    self.send_message(user.chat_id, "You already are subscribed to them.")
+                    self.send_message(profile.chat_id, "You already are subscribed to them.")
         elif len(applicable_objects) == 1:
             applicable_object = applicable_objects[0]
             if type(applicable_object) is Shop:
-                user.subscribed_shops.append(applicable_object)
+                if remove:
+                    profile.subscribed_shops.remove(applicable_object)
+                else:
+                    profile.subscribed_shops.add(applicable_object)
             elif type(applicable_object) is Category:
-                user.subscribed_categories.append(applicable_object)
+                if remove:
+                    profile.subscribed_categories.remove(applicable_object)
+                else:
+                    profile.subscribed_categories.add(applicable_object)
             else:
                 raise NotImplementedError("Unknown object found in add_command")
-            session.commit()
+            profile.save()
             if remove:
-                self.send_message(user.chat_id, "You removed {}.".format(str(applicable_object)))
+                self.send_message(profile.chat_id, "You removed {}.".format(str(applicable_object)))
             else:
-                self.send_message(user.chat_id, "You subscribed to {}.".format(str(applicable_object)))
+                self.send_message(profile.chat_id, "You subscribed to {}.".format(str(applicable_object)))
         else:
             message = "Multiple matches found, please be more specific or use the id:"
             for applicable_object in applicable_objects:
                 message += "\n" + str(applicable_object)
-            self.send_message(user.chat_id, message)
+            self.send_message(profile.chat_id, message)
 
     def remove_command(self, update, args, type_=None):
         self.add_command(update, args, type_=type_, remove=True)
@@ -215,7 +218,7 @@ class KriisisBot(telegram.Bot):
 
         # def shops_command(self, update):
         #     chat_id, user_id = update.message.chat_id, update.message.from_user.id
-        #     user = self.database.get_user(user_id)
+        #     user = self.database.get_profile(user_id)
         #     message = "All shops:"
         #     for shop in Shop2.get_all_shops():
         #         message += "\n" + str(shop.shop_id) + ": " + shop.name

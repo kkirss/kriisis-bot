@@ -31,17 +31,14 @@ class KriisisScraper:
             raise RuntimeError
 
         discount = Discount(kriisis_id=discount_id, category=category)
-        shop_names = soup.find("p", "big").text.split(": ")[1].split(", ")
-        # discount.shops = session.query(Shop).filter(Shop.name.in_(shop_names)).all()
-        shops = Shop.objects.query(name__in=shop_names)
-        discount.shops.add(*shops)
-        view_sale_dates = soup.find_all("p", "view_sale_date")
+        view_sale_dates = soup.find_all("p", {"class": "view_sale_date"})
         discount.price = float(view_sale_dates[1].text.split(" ")[1][:-1])
-        discount.item_name = view_sale_dates[1].find_next_sibling().contents[0].text
-        try:
-            discount.item_description = view_sale_dates[1].find_next_sibling().contents[1].text
-        except IndexError:
+        discount.item_name = view_sale_dates[0].parent.find("h2", {"class": "larger"}).text
+        item_description_elem = view_sale_dates[0].parent.find("p", {"class": "larger"})
+        if item_description_elem is None:
             discount.item_description = ""
+        else:
+            discount.item_description = item_description_elem.text
         period_text_split = view_sale_dates[0].text.split(" ")
         discount.start_date = datetime.strptime(period_text_split[2], "%d.%m.%Y").date()
         try:
@@ -49,6 +46,10 @@ class KriisisScraper:
         except IndexError:  # One day discount
             discount.end_date = discount.start_date
         discount.image_url = soup.find("img", class_=["img_big", "img_big2"]).get("src")
+        discount.save()
+        shop_names = soup.find("p", "big").text.split(": ")[1].split(", ")
+        shops = Shop.objects.filter(name__in=shop_names).all()
+        discount.shops.add(*shops)
         discount.save()
         return discount
 
@@ -83,7 +84,7 @@ class KriisisScraper:
         end_categories = Category.objects.filter(children=None)
         for category in end_categories:
             self.logger.debug("Scraping category {}: {}".format(category.kriisis_id, category.name))
-            found_discounts = self.scrape_category(category.category_id)
+            found_discounts = self.scrape_category(category)
             new_discounts.extend(found_discounts)
         time_taken = time.time() - start_time
         self.logger.info(
@@ -112,7 +113,9 @@ class KriisisScraper:
                 name = a.text.lstrip(">").split(" (")[0]
                 category_id = int(id_prefix + a.get("href").split("=")[1])
                 if category_id not in categories:
-                    categories[category_id] = Category(kriisis_id=category_id, name=name)
+                    category = Category(kriisis_id=category_id, name=name)
+                    category.save()
+                    categories[category_id] = category
                 parent_li = li.parent.parent
                 if parent_li.name == "li":  # Category has a parent category
                     parent_id = int(id_prefix + parent_li.find("a").get("href").split("=")[1])
@@ -136,5 +139,7 @@ class KriisisScraper:
             if len(shop_soup.find_all("p", class_="no_sale")) > 0:  # No discounts available for that shop
                 continue
             shop_id = int(shop_soup.find("div", class_="pstrnav").find_all("a")[-1].get("href").split("=")[-1])
-            shops.append(Shop(shop_id=shop_id, name=name, image_url=image_url))
+            shop = Shop(kriisis_id=shop_id, name=name, image_url=image_url)
+            shop.save()
+            shops.append(shop)
         return shops

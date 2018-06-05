@@ -9,7 +9,22 @@ class Category(models.Model):
 
     name = models.TextField()
     children = models.ManyToManyField("scraper.Category", related_name="parents", blank=True)
-    subscribed_users = models.ManyToManyField("accounts.User", related_name="subscribed_categories")
+    subscribed_profiles = models.ManyToManyField("accounts.Profile", related_name="subscribed_categories")
+
+    def __init__(self, *args, **kwargs):
+        super(Category, self).__init__(*args, **kwargs)
+        self._ancestors = None
+
+    @property
+    def ancestors(self):
+        if self._ancestors is None:
+            self._ancestors = set()
+            stack = list(self.parents)
+            while stack:
+                parent = stack.pop()
+                self._ancestors.add(parent)
+                stack.extend(parent.parents)
+        return self._ancestors
 
 
 class Shop(models.Model):
@@ -20,7 +35,7 @@ class Shop(models.Model):
     name = models.TextField()
     image_url = models.TextField()
 
-    subscribed_users = models.ManyToManyField("accounts.User", related_name="subscribed_shops")
+    subscribed_profiles = models.ManyToManyField("accounts.Profile", related_name="subscribed_shops")
 
 
 class Discount(models.Model):

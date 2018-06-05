@@ -1,6 +1,9 @@
 django===2.0.6
+djangorestframework===3.8.2
+psycopg2===2.7.4
 django-hashid-field===2.1.1
-environ===1.0
+djoser==1.1.5
+django-environ===0.4.4
 requests==2.12.4
 python-telegram-bot==10.1.0
 SQLAlchemy==1.1.4
