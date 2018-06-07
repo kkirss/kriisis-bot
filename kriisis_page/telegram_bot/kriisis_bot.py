@@ -7,14 +7,31 @@ from django.core.exceptions import ObjectDoesNotExist
 from telegram import ParseMode
 from telegram.ext import Updater, CommandHandler
 
-from scraper.models import Category, Shop, Discount
+from scraper.models import Discount
 from accounts.models import Profile
+from .commands import AddCommands, InfoCommands, SettingsCommands, StartCommand
 
 
 class KriisisBot(telegram.Bot):
     GITHUB_LINK = "https://github.com/runekri3/kriisis-bot"
     POLL_INTERVAL = 2
     SCRAPE_INTERVAL = 3600
+
+    ALL_COMMANDS = (
+        AddCommands.AddCommand,
+        AddCommands.RemoveCommand,
+        AddCommands.AddCategoryCommand,
+        AddCommands.AddShopCommand,
+        AddCommands.RemoveCategoryCommand,
+        AddCommands.RemoveShopCommand,
+        InfoCommands.HelpCommand,
+        InfoCommands.FindCategoryCommand,
+        InfoCommands.GithubCommand,
+        InfoCommands.ShopsCommand,
+        SettingsCommands.EnableCommand,
+        SettingsCommands.DisableCommand,
+        StartCommand.StartCommand
+    )
 
     # TODO: Implement kampaaniad
 
@@ -27,19 +44,8 @@ class KriisisBot(telegram.Bot):
 
     def add_handlers(self):
         dispatcher = self.updater.dispatcher
-        dispatcher.add_handler(CommandHandler("help", self.__class__.help_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("start", self.__class__.start_command))
-        dispatcher.add_handler(CommandHandler("enable", self.__class__.enable_command))
-        dispatcher.add_handler(CommandHandler("disable", self.__class__.disable_command))
-        dispatcher.add_handler(CommandHandler("add", self.__class__.add_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("remove", self.__class__.remove_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("addshop", self.__class__.addshop_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("addcategory", self.__class__.addcategory_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("removeshop", self.__class__.removeshop_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("removecategory", self.__class__.removecategory_command, pass_args=True))
-        dispatcher.add_handler(CommandHandler("github", self.__class__.github_command))
-        dispatcher.add_handler(CommandHandler("shops", self.__class__.shops_command))
-        dispatcher.add_handler(CommandHandler("findcategory", self.__class__.find_category_command, pass_args=True))
+        for command in self.__class__.ALL_COMMANDS:
+            dispatcher.add_handler(CommandHandler(command.COMMAND_STR, command.handle, pass_args=command.PASS_ARGS))
 
     def start_bot(self):
         now = datetime.datetime.now()
@@ -108,157 +114,3 @@ class KriisisBot(telegram.Bot):
             self.logger.debug("User hadn't used /start")
         else:
             return profile
-
-    def help_command(self, update, args=()):
-        # TODO: Implement general help
-        # TODO: Implement help for specific commands
-        chat_id = update.message.chat_id
-        self.send_message(chat_id, "Sorry but I can't help you because my dev is lazy")
-
-    def start_command(self, update):
-        user_id, chat_id = update.message.from_user.id, update.message.chat_id
-        try:
-            profile = Profile.objects.get(telegram_user_id=user_id)
-        except ObjectDoesNotExist:
-            profile = Profile(telegram_user_id=user_id, telegram_chat_id=chat_id)
-            profile.save()
-            self.send_message(chat_id, "Hello :)")
-            self.help_command(update)
-        else:
-            self.send_message(chat_id, "You have already used /start. Use /help if you want help.")
-
-    def enable_command(self, update):
-        profile = self.get_profile(update)
-        if profile.telegram_notifications:
-            self.send_message(profile.telegram_chat_id, "You already have notifications enabled")
-        else:
-            profile.telegram_notifications = True
-            profile.save()
-            self.send_message(profile.telegram_chat_id, "You have enabled notifications")
-
-    def disable_command(self, update):
-        profile = self.get_profile(update)
-        if not profile.telegram_notifications:
-            self.send_message(profile.telegram_chat_id, "You already have notifications disabled")
-        else:
-            profile.telegram_notifications = False
-            profile.save()
-            self.send_message(profile.telegram_chat_id, "You have disabled notifications")
-
-    def add_command(self, update, args, type_=None, remove=False):
-        found_objects = []
-        profile = self.get_profile(update)
-        search_query = " ".join(args)
-        try:
-            obj_id = int(search_query)
-        except ValueError:
-            if type_ is Shop or type_ is None:
-                found_objects.extend(list(Shop.objects.filter(name__icontains=search_query).all()))
-            if type_ is Category or type_ is None:
-                found_objects.extend(list(Category.objects.filter(name__icontains=search_query).all()))
-            if not found_objects:
-                self.send_message(profile.telegram_chat_id, "Found nothing with that name.")
-                return
-        else:
-            if type_ is Shop or type_ is None:
-                found_objects.extend(list(Shop.objects.filter(kriisis_id=obj_id).all()))
-            if type_ is Category or type_ is None:
-                found_objects.extend(list(Category.objects.filter(kriisis_id=obj_id).all()))
-            if not found_objects:
-                self.send_message(profile.telegram_chat_id, "Found nothing with that id.")
-                return
-        applicable_objects = []
-        for found_object in found_objects:
-            if type(found_object) is Shop:
-                if remove:
-                    applicable = found_object in profile.subscribed_shops.all()
-                else:
-                    applicable = found_object not in profile.subscribed_shops.all()
-            elif type(found_object) is Category:
-                if remove:
-                    applicable = found_object in profile.subscribed_categories.all()
-                else:
-                    applicable = all(category not in profile.subscribed_categories.all() for category in
-                                     [found_object] + list(found_object.ancestors))
-            else:
-                raise NotImplementedError("Unknown object found in add_command")
-            if applicable:
-                applicable_objects.append(found_object)
-        if len(applicable_objects) == 0:
-            if remove:
-                if len(found_objects) == 1:
-                    self.send_message(profile.telegram_chat_id, "You aren't subscribed to it.")
-                else:
-                    self.send_message(profile.telegram_chat_id, "You aren't subscribed to them.")
-            else:
-                if len(found_objects) == 1:
-                    self.send_message(profile.telegram_chat_id, "You already are subscribed to it.")
-                else:
-                    self.send_message(profile.telegram_chat_id, "You already are subscribed to them.")
-        elif len(applicable_objects) == 1:
-            applicable_object = applicable_objects[0]
-            if type(applicable_object) is Shop:
-                if remove:
-                    profile.subscribed_shops.remove(applicable_object)
-                else:
-                    profile.subscribed_shops.add(applicable_object)
-            elif type(applicable_object) is Category:
-                if remove:
-                    profile.subscribed_categories.remove(applicable_object)
-                else:
-                    profile.subscribed_categories.add(applicable_object)
-            else:
-                raise NotImplementedError("Unknown object found in add_command")
-            profile.save()
-            if remove:
-                self.send_message(profile.telegram_chat_id, "You removed {}.".format(str(applicable_object)))
-            else:
-                self.send_message(profile.telegram_chat_id, "You subscribed to {}.".format(str(applicable_object)))
-        else:
-            message = "Multiple matches found, please be more specific or use the id:"
-            for applicable_object in applicable_objects:
-                message += "\n" + applicable_object.long_name
-            self.send_message(profile.telegram_chat_id, message)
-
-    def remove_command(self, update, args, type_=None):
-        self.add_command(update, args, type_=type_, remove=True)
-
-    def addshop_command(self, update, args):
-        self.add_command(update, args, type_=Shop)
-
-    def addcategory_command(self, update, args):
-        self.add_command(update, args, type_=Category)
-
-    def removeshop_command(self, update, args):
-        self.remove_command(update, args, type_=Shop)
-
-    def removecategory_command(self, update, args):
-        self.remove_command(update, args, type_=Category)
-
-    def github_command(self, update):
-        chat_id = update.message.chat_id
-        self.send_message(chat_id, self.GITHUB_LINK)
-
-    def shops_command(self, update):
-        profile = self.get_profile(update)
-        message = "All shops:"
-        for shop in Shop.objects.order_by("kriisis_id").all():
-            message += shop.long_name
-            if shop in profile.subscribed_shops.all():
-                message += " (added)"
-        self.send_message(profile.telegram_chat_id, message)
-
-    def findcategory_command(self, update, args):
-        max_categories = 20
-        chat_id, user_id = update.message.chat_id, update.message.from_user.id
-        search_query = " ".join(args).lower()
-        found_categories = Category.objects.filter(name__icontains=search_query)
-        if not found_categories.exists():
-            self.send_message(chat_id, "Didn't find any categories. (for '{}')".format(search_query))
-        else:
-            message = "Found categories:"
-            for category in found_categories.all():
-                message += "\n" + category.long_name
-            if len(found_categories) == max_categories:
-                message += "\nThere may be more categories, try a more specific term."
-            self.send_message(chat_id, message)
