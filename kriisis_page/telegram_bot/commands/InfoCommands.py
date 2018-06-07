@@ -12,10 +12,11 @@ class HelpCommand(Command):
 
     @staticmethod
     def handle(bot, update):
-        # TODO: Implement general help
         # TODO: Implement help for specific commands
         chat_id = update.message.chat_id
-        bot.send_message(chat_id, "Sorry but I can't help you because my dev is lazy")
+        help_texts = [command.get_help_text() for command in bot.ALL_COMMANDS]
+        message = "\n".join(help_texts)
+        bot.send_message(chat_id, message)
 
 
 class GithubCommand(Command):
