@@ -39,7 +39,7 @@ class KriisisBot(telegram.Bot):
         dispatcher.add_handler(CommandHandler("removecategory", self.__class__.removecategory_command, pass_args=True))
         dispatcher.add_handler(CommandHandler("github", self.__class__.github_command))
         dispatcher.add_handler(CommandHandler("shops", self.__class__.shops_command))
-        dispatcher.add_handler(CommandHandler("find_category", self.__class__.find_category_command, pass_args=True))
+        dispatcher.add_handler(CommandHandler("findcategory", self.__class__.find_category_command, pass_args=True))
 
     def start_bot(self):
         now = datetime.datetime.now()
@@ -248,7 +248,7 @@ class KriisisBot(telegram.Bot):
                 message += " (added)"
         self.send_message(profile.telegram_chat_id, message)
 
-    def find_category_command(self, update, args):
+    def findcategory_command(self, update, args):
         max_categories = 20
         chat_id, user_id = update.message.chat_id, update.message.from_user.id
         search_query = " ".join(args).lower()
