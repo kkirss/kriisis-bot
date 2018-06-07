@@ -16,21 +16,21 @@ class Category(models.Model):
         self._ancestors = None
 
     def __str__(self):
-        return "{0} ({1})".format(self.name, ", ".join(self.parents))
+        return "{0} ({1})".format(self.name, ", ".join(parent.name for parent in self.parents.all()))
 
     @property
     def long_name(self):
-        return "{self.kriisis_id}: {self.name}"
+        return "{self.kriisis_id}: {self.name}".format(self=self)
 
     @property
     def ancestors(self):
         if self._ancestors is None:
             self._ancestors = set()
-            stack = list(self.parents)
+            stack = list(self.parents.all())
             while stack:
                 parent = stack.pop()
                 self._ancestors.add(parent)
-                stack.extend(parent.parents)
+                stack.extend(parent.parents.all())
         return self._ancestors
 
 
@@ -49,7 +49,7 @@ class Shop(models.Model):
 
     @property
     def long_name(self):
-        return "{self.kriisis_id}: {self.name}"
+        return "{self.kriisis_id}: {self.name}".format(self=self)
 
 
 class Discount(models.Model):
