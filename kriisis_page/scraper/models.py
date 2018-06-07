@@ -15,6 +15,9 @@ class Category(models.Model):
         super(Category, self).__init__(*args, **kwargs)
         self._ancestors = None
 
+    def __str__(self):
+        return "{0} ({1})".format(self.name, ", ".join(self.parents))
+
     @property
     def ancestors(self):
         if self._ancestors is None:
@@ -37,9 +40,15 @@ class Shop(models.Model):
 
     subscribed_profiles = models.ManyToManyField("accounts.Profile", related_name="subscribed_shops")
 
+    def __str__(self):
+        return self.name
+
 
 class Discount(models.Model):
     """A discount on some product/service"""
+    NOTIFICATION_FORMAT = """*{d.item_name}*\n_{d.item_description}_\n{d.price}\n{d.shop_names}\n{d.end_date:%d.%m.%y}"""
+    NOTIFICATION_FORMAT_NO_DESCRIPTION = """*{d.item_name}*\n{d.price}\n{d.shop_names}\n{d.end_date:%d.%m.%y}"""
+
     id = HashidAutoField(primary_key=True)
     kriisis_id = models.IntegerField(unique=True)
 
@@ -53,3 +62,10 @@ class Discount(models.Model):
 
     shops = models.ManyToManyField(Shop, related_name="discounts")
     category = models.ForeignKey(Category, related_name="discounts", on_delete=models.CASCADE)
+
+    @property
+    def notification_str(self):
+        if self.item_description == "":
+            return self.NOTIFICATION_FORMAT_NO_DESCRIPTION.format(d=self)
+        else:
+            return self.NOTIFICATION_FORMAT.format(d=self)
