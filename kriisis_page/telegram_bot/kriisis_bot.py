@@ -80,7 +80,7 @@ class KriisisBot(telegram.Bot):
                     profile.save()
         self.logger.info("Processing complete")
 
-    def notify_user(self, profile, discount):  # TODO: Implement notifying the user
+    def notify_user(self, profile, discount):
         if profile.telegram_picture_notifications:
             if discount.image_file_id is not None:
                 self.send_photo(profile.telegram_chat_id, discount.image_file_id)
