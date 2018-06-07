@@ -12,7 +12,7 @@ from accounts.models import Profile
 
 
 class KriisisBot(telegram.Bot):
-    GITHUB_LINK = "https://github.com/runekri3/kriisis-bot"  # TODO: Upload to github
+    GITHUB_LINK = "https://github.com/runekri3/kriisis-bot"
     POLL_INTERVAL = 2
     SCRAPE_INTERVAL = 3600
 
