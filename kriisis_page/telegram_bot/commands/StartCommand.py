@@ -1,12 +1,10 @@
-from django.core.exceptions import ObjectDoesNotExist
-
 from accounts.models import Profile
 from .Command import Command
 
 
 class StartCommand(Command):
     COMMAND_STR = "start"
-    DESCRIPTION = ""
+    DESCRIPTION = "Register"
 
     PASS_ARGS = False
 

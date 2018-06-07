@@ -80,7 +80,7 @@ def add_command(bot, update, args, type_=None, remove=False):
 
 class AddCommand(Command):
     COMMAND_STR = "add"
-    DESCRIPTION = "Add a category or shop using name or id"
+    DESCRIPTION = "Add a category/shop using name/id"
 
     PASS_ARGS = True
 
@@ -91,7 +91,7 @@ class AddCommand(Command):
 
 class RemoveCommand(Command):
     COMMAND_STR = "remove"
-    DESCRIPTION = "Remove a category or shop using name or id"
+    DESCRIPTION = "Remove a category/shop using name/id"
 
     PASS_ARGS = True
 
@@ -102,7 +102,7 @@ class RemoveCommand(Command):
 
 class AddShopCommand(Command):
     COMMAND_STR = "addshop"
-    DESCRIPTION = "Add a shop using name or id"
+    DESCRIPTION = "Add a shop using name/id"
 
     PASS_ARGS = True
 
@@ -113,7 +113,7 @@ class AddShopCommand(Command):
 
 class AddCategoryCommand(Command):
     COMMAND_STR = "addcategory"
-    DESCRIPTION = "Add a category using name or id"
+    DESCRIPTION = "Add a category using name/id"
 
     PASS_ARGS = True
 
@@ -124,7 +124,7 @@ class AddCategoryCommand(Command):
 
 class RemoveShopCommand(Command):
     COMMAND_STR = "removeshop"
-    DESCRIPTION = "Remove a shop using name or id"
+    DESCRIPTION = "Remove a shop using name/id"
 
     PASS_ARGS = True
 
@@ -135,7 +135,7 @@ class RemoveShopCommand(Command):
 
 class RemoveCategoryCommand(Command):
     COMMAND_STR = "removecategory"
-    DESCRIPTION = "Remove a category using name or id"
+    DESCRIPTION = "Remove a category using name/id"
 
     PASS_ARGS = True
 
