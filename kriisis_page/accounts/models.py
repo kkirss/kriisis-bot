@@ -61,5 +61,7 @@ class Profile(models.Model):
     telegram_chat_id = models.IntegerField(null=True, blank=True)
 
     language = models.CharField(choices=settings.LANGUAGES, default=settings.LANGUAGE_CODE, max_length=10, help_text='Preferred language of user')
+    telegram_notifications = models.BooleanField(default=True)
     telegram_picture_notifications = models.BooleanField(default=False)
+    telegram_notification_hour = models.IntegerField(null=True, blank=True)
     kriisis_last_discount_id = models.IntegerField(default=0)

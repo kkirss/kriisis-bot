@@ -16,7 +16,6 @@ class KriisisBot(telegram.Bot):
     POLL_INTERVAL = 2
     SCRAPE_INTERVAL = 3600
 
-    # TODO: Implement getting notifications at specific hours
     # TODO: Implement kampaaniad
 
     def __init__(self, scraper):
@@ -30,6 +29,8 @@ class KriisisBot(telegram.Bot):
         dispatcher = self.updater.dispatcher
         dispatcher.add_handler(CommandHandler("help", self.__class__.help_command, pass_args=True))
         dispatcher.add_handler(CommandHandler("start", self.__class__.start_command))
+        dispatcher.add_handler(CommandHandler("enable", self.__class__.enable_command))
+        dispatcher.add_handler(CommandHandler("disable", self.__class__.disable_command))
         dispatcher.add_handler(CommandHandler("add", self.__class__.add_command, pass_args=True))
         dispatcher.add_handler(CommandHandler("remove", self.__class__.remove_command, pass_args=True))
         dispatcher.add_handler(CommandHandler("addshop", self.__class__.addshop_command, pass_args=True))
@@ -61,9 +62,13 @@ class KriisisBot(telegram.Bot):
                     profile.delete()
 
     def send_notifications(self, hourly=False):
-        for profile in Profile.objects.all():
-            subscribed_category_ids = [category.kriisis_id for category in profile.subscribed_categories]
-            subscribed_shop_ids = [shop.kriisis_id for shop in profile.subscribed_shops]
+        profiles_to_notify = Profile.objects.filter(telegram_notifications=True)
+        if hourly:
+            cur_hour = datetime.datetime.now().hour
+            profiles_to_notify = profiles_to_notify.filter(telegram_notification_hour=cur_hour)
+        else:
+            profiles_to_notify = profiles_to_notify.filter(telegram_notification_hour=None)
+        for profile in profiles_to_notify.all():
             discounts = Discount.objects\
                 .filter(kriisis_id__lt=profile.kriisis_last_discount_id)\
                 .filter(category__in=profile.subscribed_categories)\
@@ -121,6 +126,24 @@ class KriisisBot(telegram.Bot):
             self.help_command(update)
         else:
             self.send_message(chat_id, "You have already used /start. Use /help if you want help.")
+
+    def enable_command(self, update):
+        profile = self.get_profile(update)
+        if profile.telegram_notifications:
+            self.send_message(profile.telegram_chat_id, "You already have notifications enabled")
+        else:
+            profile.telegram_notifications = True
+            profile.save()
+            self.send_message(profile.telegram_chat_id, "You have enabled notifications")
+
+    def disable_command(self, update):
+        profile = self.get_profile(update)
+        if not profile.telegram_notifications:
+            self.send_message(profile.telegram_chat_id, "You already have notifications disabled")
+        else:
+            profile.telegram_notifications = True
+            profile.save()
+            self.send_message(profile.telegram_chat_id, "You have disabled notifications")
 
     def add_command(self, update, args, type_=None, remove=False):
         found_objects = []
