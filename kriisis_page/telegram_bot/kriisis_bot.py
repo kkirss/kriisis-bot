@@ -141,7 +141,7 @@ class KriisisBot(telegram.Bot):
         if not profile.telegram_notifications:
             self.send_message(profile.telegram_chat_id, "You already have notifications disabled")
         else:
-            profile.telegram_notifications = True
+            profile.telegram_notifications = False
             profile.save()
             self.send_message(profile.telegram_chat_id, "You have disabled notifications")
 
