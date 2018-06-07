@@ -19,6 +19,10 @@ class Category(models.Model):
         return "{0} ({1})".format(self.name, ", ".join(self.parents))
 
     @property
+    def long_name(self):
+        return "{self.kriisis_id}: {self.name}"
+
+    @property
     def ancestors(self):
         if self._ancestors is None:
             self._ancestors = set()
@@ -42,6 +46,10 @@ class Shop(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def long_name(self):
+        return "{self.kriisis_id}: {self.name}"
 
 
 class Discount(models.Model):

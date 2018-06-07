@@ -39,7 +39,7 @@ class KriisisBot(telegram.Bot):
         dispatcher.add_handler(CommandHandler("removecategory", self.__class__.removecategory_command, pass_args=True))
         dispatcher.add_handler(CommandHandler("github", self.__class__.github_command))
         dispatcher.add_handler(CommandHandler("shops", self.__class__.shops_command))
-        # dispatcher.add_handler(CommandHandler("find", self.__class__.find_command, pass_args=True))
+        dispatcher.add_handler(CommandHandler("find_category", self.__class__.find_category_command, pass_args=True))
 
     def start_bot(self):
         now = datetime.datetime.now()
@@ -217,7 +217,7 @@ class KriisisBot(telegram.Bot):
         else:
             message = "Multiple matches found, please be more specific or use the id:"
             for applicable_object in applicable_objects:
-                message += "\n" + str(applicable_object)
+                message += "\n" + applicable_object.long_name
             self.send_message(profile.telegram_chat_id, message)
 
     def remove_command(self, update, args, type_=None):
@@ -243,22 +243,22 @@ class KriisisBot(telegram.Bot):
         profile = self.get_profile(update)
         message = "All shops:"
         for shop in Shop.objects.order_by("kriisis_id").all():
-            message += "\n{shop.kriisis_id}: {shop.name}".format(shop=shop)
+            message += shop.long_name
             if shop in profile.subscribed_shops.all():
                 message += " (added)"
         self.send_message(profile.telegram_chat_id, message)
 
-        # def find_command(self, update, args):
-        #     max_categories = 20
-        #     chat_id, user_id = update.message.chat_id, update.message.from_user.id
-        #     search_query = " ".join(args).lower()
-        #     found_categories = Category2.find_categories(search_query, max_categories)
-        #     if not found_categories:
-        #         self.send_message(chat_id, "Didn't find any categories. (for '{}')".format(search_query))
-        #     else:
-        #         message = "Found categories:"
-        #         for category in found_categories:
-        #             message += "\n" + str(category)
-        #         if len(found_categories) == max_categories:
-        #             message += "\nThere may be more categories, try a more specific term."
-        #         self.send_message(chat_id, message)
+    def find_category_command(self, update, args):
+        max_categories = 20
+        chat_id, user_id = update.message.chat_id, update.message.from_user.id
+        search_query = " ".join(args).lower()
+        found_categories = Category.objects.filter(name__icontains=search_query)
+        if not found_categories.exists():
+            self.send_message(chat_id, "Didn't find any categories. (for '{}')".format(search_query))
+        else:
+            message = "Found categories:"
+            for category in found_categories.all():
+                message += "\n" + category.long_name
+            if len(found_categories) == max_categories:
+                message += "\nThere may be more categories, try a more specific term."
+            self.send_message(chat_id, message)
