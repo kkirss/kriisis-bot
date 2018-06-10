@@ -1,5 +1,6 @@
 django===2.0.6
 djangorestframework===3.8.2
+djangorestframework_jwt===1.11.0
 psycopg2===2.7.4
 django-hashid-field===2.1.1
 djoser==1.1.5

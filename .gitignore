@@ -1,5 +1,7 @@
 db.sqlite3
 Telegram Auth Token.txt
+kriisis_page/frontend/node_modules
+kriisis_page/frontend/build
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

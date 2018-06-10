@@ -31,10 +31,11 @@ INSTALLED_APPS = [
     'kriisis_page',
     'accounts',
     'scraper',
-    'telegram_bot'
+    'telegram_bot',
+    'frontend',
 
-    # 'rest_framework',
-    # 'djoser',
+    'rest_framework',
+    'djoser',
     # 'corsheaders',
 ]
 
@@ -85,6 +86,9 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'APP_DIRS': True,
+        'DIRS': [
+            os.path.join(BASE_DIR, 'frontend/build')
+        ],
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -151,6 +155,6 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
-# STATICFILES_DIRS = (
-#     os.path.join(BASE_DIR, 'static'),
-# )
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'frontend/build/static'),
+)
