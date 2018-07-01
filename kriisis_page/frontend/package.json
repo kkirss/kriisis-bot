@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://127.0.0.1:8000",
   "dependencies": {
     "prop-types": "^15.6.1",
     "react": "^16.4.1",
@@ -9,7 +10,9 @@
     "react-redux": "^5.0.7",
     "react-scripts": "1.1.4",
     "redux": "^4.0.0",
-    "tg-resources": "^2.0.0-alpha.11"
+    "redux-thunk": "^2.3.0",
+    "tg-resources": "^2.0.0-alpha.11",
+    "superagent": "^3.8.3"
   },
   "scripts": {
     "start": "react-scripts start",

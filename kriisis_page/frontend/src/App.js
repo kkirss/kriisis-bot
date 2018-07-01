@@ -3,11 +3,14 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import logo from './logo.svg';
 import './App.css';
+import { fetchCategories } from './ducks/categories';
+import { fetchShops } from './ducks/shops';
 
 class App extends Component {
   componentDidMount() {
-    console.log(this.props)
     document.title = this.props.title;
+    this.props.fetchCategories();
+    this.props.fetchShops();
   }
 
   render() {
@@ -27,10 +30,18 @@ class App extends Component {
 
 App.propTypes = {
   title: PropTypes.string.isRequired,
+  fetchCategories: PropTypes.func.isRequired,
+  fetchShops: PropTypes.func.isRequired,
 };
 
 const mapStateToProps = state => ({
+  state,
   title: state.title,
 });
 
-export default connect(mapStateToProps, null)(App);
+const mapDispatchToProps = dispatch => ({
+  fetchCategories: () => dispatch(fetchCategories),
+  fetchShops: () => dispatch(fetchShops),
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(App);
