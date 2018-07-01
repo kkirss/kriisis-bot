@@ -1,8 +1,15 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
 import logo from './logo.svg';
 import './App.css';
 
 class App extends Component {
+  componentDidMount() {
+    console.log(this.props)
+    document.title = this.props.title;
+  }
+
   render() {
     return (
       <div className="App">
@@ -18,4 +25,12 @@ class App extends Component {
   }
 }
 
-export default App;
+App.propTypes = {
+  title: PropTypes.string.isRequired,
+};
+
+const mapStateToProps = state => ({
+  title: state.title,
+});
+
+export default connect(mapStateToProps, null)(App);
