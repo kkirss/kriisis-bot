@@ -36,6 +36,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'djoser',
+    'django_filters',
     # 'corsheaders',
 ]
 
@@ -49,11 +50,20 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
     ],
-    # 'PAGE_SIZE': 10,
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_PAGINATION_CLASS': 'kriisis_page.pagination.StandardResultsSetPagination',
+}
+
+JWT_AUTH = {
+    'JWT_PAYLOAD_HANDLER': 'accounts.utils.hashid_jwt_payload_handler',
+    'JWT_AUTH_HEADER_PREFIX': 'Bearer',
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1)
 }
 
 # REST_KNOX = {
@@ -64,7 +74,10 @@ REST_FRAMEWORK = {
 DJOSER = {
     'SITE_NAME': 'Kriisis Page',
     'SEND_ACTIVATION_EMAIL': False,
-    'SEND_CONFIRMATION_EMAIL': False
+    'SEND_CONFIRMATION_EMAIL': False,
+    'SERIALIZERS': {
+        'user_create': 'accounts.serializers.UserCreateSerializer',
+    }
 }
 
 MIDDLEWARE_CLASSES = [

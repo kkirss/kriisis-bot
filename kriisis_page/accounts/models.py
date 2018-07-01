@@ -12,6 +12,9 @@ class UserManager(BaseUserManager):
     Mostly copied from django.contrib.auth.models.UserManager
     """
 
+    USERNAME_FIELD = "email"
+    EMAIL_FIELD = "email"
+
     def _create_user(self, email, password,
                      is_staff, is_superuser, **extra_fields):
         """Create and save a User with the given username, email and password."""
